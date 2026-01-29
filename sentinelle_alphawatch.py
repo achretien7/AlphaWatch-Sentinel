@@ -35,7 +35,13 @@ def get_funding_rate_binance(symbol):
         params = {'symbol': symbol}
         response = requests.get(url, params=params, timeout=15)
         data = response.json()
-        return float(data['lastFundingRate'])
+        
+        rate = float(data['lastFundingRate'])
+        
+        # 🔍 DEBUG : Afficher le taux brut pour comprendre
+        print(f"🔍 {symbol} - Rate brut: {rate} ({rate*100:.4f}%)")
+        
+        return rate
     except Exception as e:
         print(f"❌ Erreur Binance {symbol}: {e}")
         return None
@@ -55,7 +61,7 @@ for symbol in symbols:
         gain_une_heure = gain_24h / 24
         
         nom_crypto = symbol.replace('USDT', '')
-        print(f"✅ {nom_crypto}: {apr_final:.2f}% APR")
+        print(f"📊 {nom_crypto} - APR calculé: {apr_final:.2f}%")
         
         if apr_final >= SEUIL_ALERTE:
             opportunities.append({
@@ -74,6 +80,7 @@ else:
     envoyer_telegram("📊 Aucune opportunité > 0.1% APR")
 
 print("✅ Terminé")
+
 
 
 
