@@ -3,16 +3,19 @@ import time
 import csv
 import ccxt
 
-# Configuration Gate.io (Très stable sur GitHub Actions)
-exchange = ccxt.gateio({'enableRateLimit': True})
+# Configuration Gate.io forcée sur les Swaps (Perpétuels)
+exchange = ccxt.gateio({
+    'enableRateLimit': True,
+    'options': {'defaultType': 'swap'} # C'est cette ligne qui corrige l'erreur !
+})
 
-# Votre liste complète (Format Gate.io)
+# Liste complète avec le format Gate.io (ex: BTC_USDT:USDT)
 symbols = [
-    'BTC_USDT', 'ETH_USDT', 'SOL_USDT', 'XRP_USDT', 
-    'ADA_USDT', 'DOGE_USDT', 'AVAX_USDT', 'DOT_USDT', 
-    'LINK_USDT', 'UNI_USDT', 'ATOM_USDT', 'LTC_USDT', 
-    'BCH_USDT', 'NEAR_USDT', 'APT_USDT', 'ARB_USDT', 
-    'OP_USDT', 'SUI_USDT', 'SEI_USDT'
+    'BTC_USDT:USDT', 'ETH_USDT:USDT', 'SOL_USDT:USDT', 'XRP_USDT:USDT', 
+    'ADA_USDT:USDT', 'DOGE_USDT:USDT', 'AVAX_USDT:USDT', 'DOT_USDT:USDT', 
+    'LINK_USDT:USDT', 'UNI_USDT:USDT', 'ATOM_USDT:USDT', 'LTC_USDT:USDT', 
+    'BCH_USDT:USDT', 'NEAR_USDT:USDT', 'APT_USDT:USDT', 'ARB_USDT:USDT', 
+    'OP_USDT:USDT', 'SUI_USDT:USDT', 'SEI_USDT:USDT'
 ]
 
 def enregistrer_simulation(crypto, apr, gain_50):
@@ -26,14 +29,12 @@ def enregistrer_simulation(crypto, apr, gain_50):
         writer.writerow([date_heure, crypto, f"{apr:.2f}%", f"{gain_50:.4f} CHF"])
 
 def scanner_pour_dashboard():
-    print(f"🔍 Scan Dashboard (Gate.io) à {time.strftime('%H:%M:%S')}...")
+    print(f"🔍 Scan Dashboard (Gate.io Swaps) à {time.strftime('%H:%M:%S')}...")
     
     for symbol in symbols:
         try:
-            # Récupération du taux de financement sur Gate.io
             funding = exchange.fetch_funding_rate(symbol)
             rate = funding['fundingRate']
-            # Calcul de l'APR (3 paiements par jour)
             apr_final = rate * 3 * 365 * 100
             
             nom_crypto = symbol.split('_')[0]
@@ -42,7 +43,7 @@ def scanner_pour_dashboard():
             enregistrer_simulation(nom_crypto, apr_final, gain_24h)
             print(f"📊 {nom_crypto}: {apr_final:.2f}% enregistré")
             
-            time.sleep(0.2) # Sécurité pour ne pas être banni
+            time.sleep(0.2)
         except Exception as e:
             print(f"⚠️ Skip {symbol}: {e}")
 
@@ -52,6 +53,7 @@ if __name__ == "__main__":
         print("✅ Dashboard mis à jour avec succès.")
     except Exception as e:
         print(f"❌ Erreur critique: {e}")
+
 
 
 
