@@ -6,7 +6,7 @@ import requests
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-SEUIL_ALERTE = 0.1
+SEUIL_ALERTE = 5
 symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'ADAUSDT', 'XRPUSDT']
 
 def envoyer_telegram(message):
@@ -80,6 +80,7 @@ else:
     envoyer_telegram("📊 Aucune opportunité > 0.1% APR")
 
 print("✅ Terminé")
+
 
 
 
