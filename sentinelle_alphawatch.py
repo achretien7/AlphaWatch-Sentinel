@@ -7,7 +7,7 @@ TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 SEUIL_ALERTE = 5
-symbols = ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'ADAUSDT', 'XRPUSDT']
+symbols = ['BTC_USDT', 'ETH_USDT', 'SOL_USDT', 'ADA_USDT', 'XRP_USDT']
 
 def envoyer_telegram(message):
     try:
@@ -28,55 +28,47 @@ def enregistrer_simulation(crypto, apr, gain_50):
         date_heure = time.strftime('%Y-%m-%d %H:%M:%S')
         writer.writerow([date_heure, crypto, f"{apr:.2f}%", f"{gain_50:.4f} CHF"])
 
-def get_funding_rate_binance(symbol):
-    """Récupère le funding rate de Binance Futures"""
+def get_funding_rate_gateio(symbol):
+    """Récupère le funding rate de Gate.io"""
     try:
-        url = "https://fapi.binance.com/fapi/v1/premiumIndex"
-        params = {'symbol': symbol}
-        response = requests.get(url, params=params, timeout=15)
+        url = f"https://api.gateio.ws/api/v4/futures/usdt/contracts/{symbol}"
+        response = requests.get(url, timeout=15)
         data = response.json()
         
-        # 🔍 DEBUG : Afficher la réponse complète
-        print(f"🔍 Réponse API pour {symbol}: {data}")
+        print(f"🔍 Réponse Gate.io pour {symbol}: {data}")
         
-        # ✅ CORRECTION : Binance utilise 'fundingRate' pas 'lastFundingRate'
-        if 'lastFundingRate' in data:
-            rate = float(data['lastFundingRate'])
-        elif 'fundingRate' in data:
-            rate = float(data['fundingRate'])
+        if 'funding_rate' in data:
+            rate = float(data['funding_rate'])
+            print(f"✅ {symbol} - Rate: {rate} ({rate*100:.4f}%)")
+            return rate
         else:
-            print(f"⚠️ Aucun funding rate trouvé dans: {data.keys()}")
+            print(f"⚠️ Pas de funding_rate dans: {data.keys()}")
             return None
-        
-        print(f"🔍 {symbol} - Rate brut: {rate} ({rate*100:.4f}%)")
-        
-        return rate
+            
     except Exception as e:
-        print(f"❌ Erreur Binance {symbol}: {e}")
+        print(f"❌ Erreur Gate.io {symbol}: {e}")
         return None
 
 print("🚀 Bot démarré...")
-envoyer_telegram("🚀 AlphaWatch actif - Scan Binance...")
+envoyer_telegram("🚀 AlphaWatch actif - Scan Gate.io...")
 
 opportunities = []
 
 for symbol in symbols:
     time.sleep(0.5)
-    rate = get_funding_rate_binance(symbol)
+    rate = get_funding_rate_gateio(symbol)
     
     if rate is not None:
+        # Gate.io : funding 3x par jour
         apr_final = rate * 3 * 365 * 100
         gain_24h = (50 * (apr_final/100)) / 365
         gain_une_heure = gain_24h / 24
         
-        nom_crypto = symbol.replace('USDT', '')
+        nom_crypto = symbol.replace('_USDT', '')
         
-        # 🔍 LOGS COMPLETS POUR DEBUG
         print(f"📊 {nom_crypto}:")
-        print(f"   Rate: {rate} ({rate*100:.4f}%)")
         print(f"   APR: {apr_final:.2f}%")
         print(f"   Gain/h: {gain_une_heure:.4f} CHF")
-        print(f"   Seuil: {SEUIL_ALERTE}%")
         print(f"   Passe le test? {apr_final >= SEUIL_ALERTE}")
         
         if apr_final >= SEUIL_ALERTE:
