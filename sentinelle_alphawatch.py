@@ -34,8 +34,8 @@ def enregistrer_simulation(crypto, apr, gain_50):
         date_heure = time.strftime('%Y-%m-%d %H:%M:%S')
         writer.writerow([date_heure, crypto, f"{apr:.2f}%", f"{gain_50:.4f} CHF"])
 
-# --- 3. DÉMARRAGE DE LA MACHINE (VERSION CLOUD) ---
-print(f"🔍 Scan AlphaWatch en cours à {time.strftime('%H:%M:%S')}...")
+# --- 3. DÉMARRAGE DE LA MACHINE (VERSION CLOUD OPTIMISÉE) ---
+print(f"🚀 Scan AlphaWatch en cours à {time.strftime('%H:%M:%S')}...")
 
 for s in symbols:
     try:
@@ -45,20 +45,21 @@ for s in symbols:
         
         # Gain théorique sur 24h
         gain_24h = (50 * (apr_final/100)) / 365
-        # Gain réel pour l'heure qui vient de s'écouler
+        # Gain réel pour l'heure écoulée
         gain_une_heure = gain_24h / 24 
         
-        if apr_final >= SEUIL_ALERTE:
+        # TEST : Seuil bas pour forcer la notification
+        if apr_final >= 0.1: 
             nom_crypto = s.split('/')[0]
-            msg = f"🔥 ALERTE ! {nom_crypto} | APR: {apr_final:.2f}% | Gain: {gain_24h:.2f} CHF"
+            msg = f"✅ TEST CLOUD : {nom_crypto} est actif ! APR: {apr_final:.2f}%"
             
-            # Envoi et enregistrement
             envoyer_telegram(msg)
             enregistrer_simulation(nom_crypto, apr_final, gain_une_heure)
+            print(f"💰 Log enregistré pour {nom_crypto}")
             
     except Exception as e:
         print(f"⚠️ Erreur sur {s}: {e}")
 
-# IMPORTANT : Pas de time.sleep ni de boucle infinie ici !
-print("✅ Scan terminé avec succès. GitHub relancera le bot dans 1 heure.")
+print("✅ Scan terminé. GitHub va maintenant sauvegarder le CSV.")
+
 
