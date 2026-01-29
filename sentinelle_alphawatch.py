@@ -1,22 +1,38 @@
 import os
 import time
 import csv
-import requests
+import ccxt
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-SEUIL_ALERTE = 5
-symbols = ['BTC_USDT', 'ETH_USDT', 'SOL_USDT', 'ADA_USDT', 'XRP_USDT']
+SEUIL_ALERTE = 30  # Seuil réaliste pour vraies opportunités
+INTERVALLE = 600   # 10 minutes entre chaque scan
+
+# Configuration Bybit
+exchange = ccxt.bybit({
+    'enableRateLimit': True,
+    'options': {'defaultType': 'swap'}
+})
+
+# Liste étendue de cryptos
+symbols = [
+    'BTC/USDT:USDT', 'ETH/USDT:USDT', 'SOL/USDT:USDT', 'XRP/USDT:USDT', 
+    'ADA/USDT:USDT', 'DOGE/USDT:USDT', 'AVAX/USDT:USDT', 'MATIC/USDT:USDT',
+    'DOT/USDT:USDT', 'LINK/USDT:USDT', 'UNI/USDT:USDT', 'ATOM/USDT:USDT',
+    'LTC/USDT:USDT', 'BCH/USDT:USDT', 'NEAR/USDT:USDT', 'APT/USDT:USDT',
+    'ARB/USDT:USDT', 'OP/USDT:USDT', 'SUI/USDT:USDT', 'SEI/USDT:USDT'
+]
 
 def envoyer_telegram(message):
     try:
+        import requests
         url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-        params = {'chat_id': CHAT_ID, 'text': message}
+        params = {'chat_id': CHAT_ID, 'text': message, 'parse_mode': 'HTML'}
         requests.post(url, params=params, timeout=10)
         print(f"✅ Message envoyé")
     except Exception as e:
-        print(f"❌ Erreur: {e}")
+        print(f"❌ Erreur Telegram: {e}")
 
 def enregistrer_simulation(crypto, apr, gain_50):
     fichier = 'simulation_gains.csv'
@@ -28,68 +44,64 @@ def enregistrer_simulation(crypto, apr, gain_50):
         date_heure = time.strftime('%Y-%m-%d %H:%M:%S')
         writer.writerow([date_heure, crypto, f"{apr:.2f}%", f"{gain_50:.4f} CHF"])
 
-def get_funding_rate_gateio(symbol):
-    """Récupère le funding rate de Gate.io"""
-    try:
-        url = f"https://api.gateio.ws/api/v4/futures/usdt/contracts/{symbol}"
-        response = requests.get(url, timeout=15)
-        data = response.json()
-        
-        print(f"🔍 Réponse Gate.io pour {symbol}: {data}")
-        
-        if 'funding_rate' in data:
-            rate = float(data['funding_rate'])
-            print(f"✅ {symbol} - Rate: {rate} ({rate*100:.4f}%)")
-            return rate
-        else:
-            print(f"⚠️ Pas de funding_rate dans: {data.keys()}")
-            return None
-            
-    except Exception as e:
-        print(f"❌ Erreur Gate.io {symbol}: {e}")
-        return None
-
-print("🚀 Bot démarré...")
-envoyer_telegram("🚀 AlphaWatch actif - Scan Gate.io...")
-
-opportunities = []
-
-for symbol in symbols:
-    time.sleep(0.5)
-    rate = get_funding_rate_gateio(symbol)
+def scanner_opportunites():
+    print(f"\n🔍 Scan à {time.strftime('%H:%M:%S')}...")
+    opportunities = []
     
-    if rate is not None:
-        # Gate.io : funding 3x par jour
-        apr_final = rate * 3 * 365 * 100
-        gain_24h = (50 * (apr_final/100)) / 365
-        gain_une_heure = gain_24h / 24
-        
-        nom_crypto = symbol.replace('_USDT', '')
-        
-        print(f"📊 {nom_crypto}:")
-        print(f"   APR: {apr_final:.2f}%")
-        print(f"   Gain/h: {gain_une_heure:.4f} CHF")
-        print(f"   Passe le test? {apr_final >= SEUIL_ALERTE}")
-        
-        if apr_final >= SEUIL_ALERTE:
-            opportunities.append({
-                'crypto': nom_crypto,
-                'apr': apr_final,
-                'gain': gain_une_heure
-            })
-            enregistrer_simulation(nom_crypto, apr_final, gain_une_heure)
+    for symbol in symbols:
+        try:
+            funding = exchange.fetch_funding_rate(symbol)
+            rate = funding['fundingRate']
+            apr_final = rate * 3 * 365 * 100
+            
+            nom_crypto = symbol.split('/')[0]
+            
+            if apr_final >= SEUIL_ALERTE:
+                gain_24h = (50 * (apr_final/100)) / 365
+                gain_une_heure = gain_24h / 24
+                
+                opportunities.append({
+                    'crypto': nom_crypto,
+                    'apr': apr_final,
+                    'gain': gain_une_heure
+                })
+                
+                enregistrer_simulation(nom_crypto, apr_final, gain_une_heure)
+                print(f"💰 {nom_crypto}: {apr_final:.2f}% APR")
+            
+            time.sleep(0.5)  # Éviter rate limit
+            
+        except Exception as e:
+            print(f"⚠️ Erreur {symbol}: {e}")
+    
+    return opportunities
+
+def envoyer_rapport(opportunities):
+    if opportunities:
+        message = "💰 <b>OPPORTUNITÉS DÉTECTÉES</b>\n\n"
+        for opp in sorted(opportunities, key=lambda x: x['apr'], reverse=True):
+            message += f"• <b>{opp['crypto']}</b>: {opp['apr']:.2f}% APR\n"
+            message += f"  Gain/h: {opp['gain']:.4f} CHF\n\n"
+        envoyer_telegram(message)
     else:
-        print(f"⚠️ {symbol} - Aucune donnée reçue")
+        print(f"📊 Aucune opportunité > {SEUIL_ALERTE}% APR")
 
-if opportunities:
-    message = "💰 OPPORTUNITÉS\n\n"
-    for opp in opportunities:
-        message += f"• {opp['crypto']}: {opp['apr']:.2f}% APR ({opp['gain']:.4f} CHF/h)\n"
-    envoyer_telegram(message)
-else:
-    envoyer_telegram(f"📊 Aucune opportunité > {SEUIL_ALERTE}% APR")
+# Boucle principale
+print("🚀 AlphaWatch démarré sur VPS Oracle")
+envoyer_telegram("🚀 <b>AlphaWatch actif</b>\nScan Bybit toutes les 10 min")
 
-print("✅ Terminé")
+while True:
+    try:
+        opportunities = scanner_opportunites()
+        envoyer_rapport(opportunities)
+        print(f"⏰ Prochain scan dans {INTERVALLE//60} minutes...")
+        time.sleep(INTERVALLE)
+    except KeyboardInterrupt:
+        print("\n👋 Arrêt du bot")
+        break
+    except Exception as e:
+        print(f"❌ Erreur critique: {e}")
+        time.sleep(60)  # Attendre 1 min avant de réessayer
 
 
 
