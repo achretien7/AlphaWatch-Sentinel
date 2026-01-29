@@ -2,13 +2,14 @@ name: AlphaWatch Sentinel Run
 
 on:
   schedule:
-    # Ce code dit à GitHub : "Lance le script toutes les heures"
-    - cron: '0 * * * *'
-  workflow_dispatch: # Ceci permet de lancer le bot MANUELLEMENT pour tester
+    - cron: '0 * * * *' # Tourne toutes les heures
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Récupérer le code
         uses: actions/checkout@v3
@@ -16,14 +17,21 @@ jobs:
       - name: Installer Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.9'
+          python-version: '3.11' # On force la 3.11, beaucoup plus stable
 
-      - name: Installer les outils (requirements)
-        run: pip install -r requirements.txt
+      - name: Installer les outils
+        run: pip install requests pandas
 
       - name: Lancer le Scan
         env:
-          # On lie vos secrets GitHub aux variables du code
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python sentinelle_alphawatch.py
+
+      - name: Sauvegarder le CSV
+        run: |
+          git config --global user.name "AlphaWatch-Bot"
+          git config --global user.email "bot@alphawatch.com"
+          git add simulation_gains.csv
+          git commit -m "MAJ Dashboard [skip ci]" || echo "Rien à ajouter"
+          git push
