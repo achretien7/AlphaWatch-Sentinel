@@ -10,7 +10,7 @@ TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 # Le reste de notre configuration ne change pas
-SEUIL_ALERTE = 15.0
+SEUIL_ALERTE = 0.1
 INTERVALLE = 3600
 exchange = ccxt.bybit()
 symbols = ['BTC/USDT:USDT', 'ETH/USDT:USDT', 'SOL/USDT:USDT', 'ADA/USDT:USDT', 'XRP/USDT:USDT']
@@ -61,3 +61,4 @@ for s in symbols:
 
 # IMPORTANT : Pas de time.sleep ni de boucle infinie ici !
 print("✅ Scan terminé avec succès. GitHub relancera le bot dans 1 heure.")
+
