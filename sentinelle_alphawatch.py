@@ -55,10 +55,6 @@ for symbol in symbols:
     time.sleep(0.5)
     rate = get_funding_rate_binance(symbol)
     
-    for symbol in symbols:
-    time.sleep(0.5)
-    rate = get_funding_rate_binance(symbol)
-    
     if rate is not None:
         apr_final = rate * 3 * 365 * 100
         gain_24h = (50 * (apr_final/100)) / 365
@@ -90,7 +86,7 @@ if opportunities:
         message += f"• {opp['crypto']}: {opp['apr']:.2f}% APR ({opp['gain']:.4f} CHF/h)\n"
     envoyer_telegram(message)
 else:
-    envoyer_telegram("📊 Aucune opportunité >" SEUIL_ALERTE)
+    envoyer_telegram(f"📊 Aucune opportunité > {SEUIL_ALERTE}% APR")
 
 print("✅ Terminé")
 
