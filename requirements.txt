@@ -1,5 +1,6 @@
+pandas==2.2.2
+plotly==5.22.0
+streamlit==1.35.0
+altair==4.2.2
 ccxt
 requests
-pandas
-plotly
-streamlit
