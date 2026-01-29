@@ -12,7 +12,10 @@ CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 # Le reste de notre configuration ne change pas
 SEUIL_ALERTE = 0.1
 INTERVALLE = 3600
-exchange = ccxt.bybit()
+exchange = ccxt.bybit({
+    'hostname': 'api.bybit.com',  # Force l'utilisation de l'API globale
+    'options': {'defaultType': 'swap'} # Précise qu'on veut les contrats perpétuels
+})
 symbols = ['BTC/USDT:USDT', 'ETH/USDT:USDT', 'SOL/USDT:USDT', 'ADA/USDT:USDT', 'XRP/USDT:USDT']
 
 # --- 2. DÉFINITION DES OUTILS (FONCTIONS) ---
@@ -61,5 +64,6 @@ for s in symbols:
         print(f"⚠️ Erreur sur {s}: {e}")
 
 print("✅ Scan terminé. GitHub va maintenant sauvegarder le CSV.")
+
 
 
