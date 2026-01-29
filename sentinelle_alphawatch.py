@@ -13,8 +13,16 @@ CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 SEUIL_ALERTE = 0.1
 INTERVALLE = 3600
 exchange = ccxt.bybit({
-    'hostname': 'bybit.com',  # Force l'utilisation de l'API globale
-    'options': {'defaultType': 'swap'} # Précise qu'on veut les contrats perpétuels
+    'options': {
+        'defaultType': 'swap',
+        'adjustForTimeDifference': True
+    },
+    'urls': {
+        'api': {
+            'public': 'https://api.bytick.com', # Utilisation du miroir bytick pour éviter le blocage
+            'private': 'https://api.bytick.com',
+        }
+    }
 })
 symbols = ['BTC/USDT:USDT', 'ETH/USDT:USDT', 'SOL/USDT:USDT', 'ADA/USDT:USDT', 'XRP/USDT:USDT']
 
@@ -64,6 +72,7 @@ for s in symbols:
         print(f"⚠️ Erreur sur {s}: {e}")
 
 print("✅ Scan terminé. GitHub va maintenant sauvegarder le CSV.")
+
 
 
 
