@@ -2,106 +2,64 @@ import os
 import time
 import csv
 import ccxt
+import requests
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
 CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
-SEUIL_ALERTE = 30  # Seuil réaliste pour vraies opportunités
-INTERVALLE = 600   # 10 minutes entre chaque scan
+# On baisse le seuil à 0 pour GitHub pour être sûr d'avoir des points sur le graphique
+SEUIL_DASHBOARD = 0  
 
-# Configuration Bybit
-exchange = ccxt.bybit({
-    'enableRateLimit': True,
-    'options': {'defaultType': 'swap'}
-})
+# Configuration Binance (Accepte les connexions GitHub)
+exchange = ccxt.binance({'enableRateLimit': True})
 
-# Liste étendue de cryptos
+# Votre liste complète de cryptos (adaptée au format Binance)
 symbols = [
-    'BTC/USDT:USDT', 'ETH/USDT:USDT', 'SOL/USDT:USDT', 'XRP/USDT:USDT', 
-    'ADA/USDT:USDT', 'DOGE/USDT:USDT', 'AVAX/USDT:USDT', 'MATIC/USDT:USDT',
-    'DOT/USDT:USDT', 'LINK/USDT:USDT', 'UNI/USDT:USDT', 'ATOM/USDT:USDT',
-    'LTC/USDT:USDT', 'BCH/USDT:USDT', 'NEAR/USDT:USDT', 'APT/USDT:USDT',
-    'ARB/USDT:USDT', 'OP/USDT:USDT', 'SUI/USDT:USDT', 'SEI/USDT:USDT'
+    'BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 
+    'ADA/USDT', 'DOGE/USDT', 'AVAX/USDT', 'MATIC/USDT',
+    'DOT/USDT', 'LINK/USDT', 'UNI/USDT', 'ATOM/USDT',
+    'LTC/USDT', 'BCH/USDT', 'NEAR/USDT', 'APT/USDT',
+    'ARB/USDT', 'OP/USDT', 'SUI/USDT', 'SEI/USDT'
 ]
-
-def envoyer_telegram(message):
-    try:
-        import requests
-        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-        params = {'chat_id': CHAT_ID, 'text': message, 'parse_mode': 'HTML'}
-        requests.post(url, params=params, timeout=10)
-        print(f"✅ Message envoyé")
-    except Exception as e:
-        print(f"❌ Erreur Telegram: {e}")
 
 def enregistrer_simulation(crypto, apr, gain_50):
     fichier = 'simulation_gains.csv'
     existe = os.path.isfile(fichier)
     with open(fichier, mode='a', newline='') as f:
         writer = csv.writer(f)
-        if not existe:
+        if not existe or os.stat(fichier).st_size == 0:
             writer.writerow(['Date', 'Crypto', 'APR %', 'Gain estime 24h (50 CHF)'])
         date_heure = time.strftime('%Y-%m-%d %H:%M:%S')
         writer.writerow([date_heure, crypto, f"{apr:.2f}%", f"{gain_50:.4f} CHF"])
 
-def scanner_opportunites():
-    print(f"\n🔍 Scan à {time.strftime('%H:%M:%S')}...")
-    opportunities = []
+def scanner_pour_dashboard():
+    print(f"🔍 Scan Dashboard (Binance) à {time.strftime('%H:%M:%S')}...")
     
     for symbol in symbols:
         try:
+            # Sur Binance on récupère le funding via fetch_funding_rate ou fetch_premium_index
             funding = exchange.fetch_funding_rate(symbol)
             rate = funding['fundingRate']
             apr_final = rate * 3 * 365 * 100
             
             nom_crypto = symbol.split('/')[0]
+            gain_24h = (50 * (apr_final/100)) / 365
             
-            if apr_final >= SEUIL_ALERTE:
-                gain_24h = (50 * (apr_final/100)) / 365
-                gain_une_heure = gain_24h / 24
-                
-                opportunities.append({
-                    'crypto': nom_crypto,
-                    'apr': apr_final,
-                    'gain': gain_une_heure
-                })
-                
-                enregistrer_simulation(nom_crypto, apr_final, gain_une_heure)
-                print(f"💰 {nom_crypto}: {apr_final:.2f}% APR")
+            # On enregistre tout pour avoir un beau graphique complet
+            enregistrer_simulation(nom_crypto, apr_final, gain_24h)
+            print(f"📊 {nom_crypto}: {apr_final:.2f}% enregistré")
             
-            time.sleep(0.5)  # Éviter rate limit
-            
+            time.sleep(0.1) 
         except Exception as e:
-            print(f"⚠️ Erreur {symbol}: {e}")
-    
-    return opportunities
+            print(f"⚠️ Skip {symbol}: {e}")
 
-def envoyer_rapport(opportunities):
-    if opportunities:
-        message = "💰 <b>OPPORTUNITÉS DÉTECTÉES</b>\n\n"
-        for opp in sorted(opportunities, key=lambda x: x['apr'], reverse=True):
-            message += f"• <b>{opp['crypto']}</b>: {opp['apr']:.2f}% APR\n"
-            message += f"  Gain/h: {opp['gain']:.4f} CHF\n\n"
-        envoyer_telegram(message)
-    else:
-        print(f"📊 Aucune opportunité > {SEUIL_ALERTE}% APR")
-
-# Boucle principale
-print("🚀 AlphaWatch démarré sur VPS Oracle")
-envoyer_telegram("🚀 <b>AlphaWatch actif</b>\nScan Bybit toutes les 10 min")
-
-while True:
+# --- EXECUTION UNIQUE POUR GITHUB ACTIONS ---
+if __name__ == "__main__":
     try:
-        opportunities = scanner_opportunites()
-        envoyer_rapport(opportunities)
-        print(f"⏰ Prochain scan dans {INTERVALLE//60} minutes...")
-        time.sleep(INTERVALLE)
-    except KeyboardInterrupt:
-        print("\n👋 Arrêt du bot")
-        break
+        scanner_pour_dashboard()
+        print("✅ Dashboard mis à jour. GitHub va maintenant sauvegarder le CSV.")
     except Exception as e:
-        print(f"❌ Erreur critique: {e}")
-        time.sleep(60)  # Attendre 1 min avant de réessayer
+        print(f"❌ Erreur: {e}")
 
 
 
