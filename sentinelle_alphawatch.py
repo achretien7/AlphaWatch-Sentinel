@@ -36,9 +36,18 @@ def get_funding_rate_binance(symbol):
         response = requests.get(url, params=params, timeout=15)
         data = response.json()
         
-        rate = float(data['lastFundingRate'])
+        # 🔍 DEBUG : Afficher la réponse complète
+        print(f"🔍 Réponse API pour {symbol}: {data}")
         
-        # 🔍 DEBUG : Afficher le taux brut pour comprendre
+        # ✅ CORRECTION : Binance utilise 'fundingRate' pas 'lastFundingRate'
+        if 'lastFundingRate' in data:
+            rate = float(data['lastFundingRate'])
+        elif 'fundingRate' in data:
+            rate = float(data['fundingRate'])
+        else:
+            print(f"⚠️ Aucun funding rate trouvé dans: {data.keys()}")
+            return None
+        
         print(f"🔍 {symbol} - Rate brut: {rate} ({rate*100:.4f}%)")
         
         return rate
@@ -89,6 +98,7 @@ else:
     envoyer_telegram(f"📊 Aucune opportunité > {SEUIL_ALERTE}% APR")
 
 print("✅ Terminé")
+
 
 
 
