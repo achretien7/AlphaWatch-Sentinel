@@ -55,13 +55,24 @@ for symbol in symbols:
     time.sleep(0.5)
     rate = get_funding_rate_binance(symbol)
     
+    for symbol in symbols:
+    time.sleep(0.5)
+    rate = get_funding_rate_binance(symbol)
+    
     if rate is not None:
         apr_final = rate * 3 * 365 * 100
         gain_24h = (50 * (apr_final/100)) / 365
         gain_une_heure = gain_24h / 24
         
         nom_crypto = symbol.replace('USDT', '')
-        print(f"📊 {nom_crypto} - APR calculé: {apr_final:.2f}%")
+        
+        # 🔍 LOGS COMPLETS POUR DEBUG
+        print(f"📊 {nom_crypto}:")
+        print(f"   Rate: {rate} ({rate*100:.4f}%)")
+        print(f"   APR: {apr_final:.2f}%")
+        print(f"   Gain/h: {gain_une_heure:.4f} CHF")
+        print(f"   Seuil: {SEUIL_ALERTE}%")
+        print(f"   Passe le test? {apr_final >= SEUIL_ALERTE}")
         
         if apr_final >= SEUIL_ALERTE:
             opportunities.append({
@@ -70,6 +81,8 @@ for symbol in symbols:
                 'gain': gain_une_heure
             })
             enregistrer_simulation(nom_crypto, apr_final, gain_une_heure)
+    else:
+        print(f"⚠️ {symbol} - Aucune donnée reçue")
 
 if opportunities:
     message = "💰 OPPORTUNITÉS\n\n"
@@ -77,9 +90,10 @@ if opportunities:
         message += f"• {opp['crypto']}: {opp['apr']:.2f}% APR ({opp['gain']:.4f} CHF/h)\n"
     envoyer_telegram(message)
 else:
-    envoyer_telegram("📊 Aucune opportunité > 0.1% APR")
+    envoyer_telegram("📊 Aucune opportunité >" SEUIL_ALERTE)
 
 print("✅ Terminé")
+
 
 
 
