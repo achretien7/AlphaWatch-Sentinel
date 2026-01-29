@@ -1,0 +1,29 @@
+name: AlphaWatch Sentinel Run
+
+on:
+  schedule:
+    # Ce code dit à GitHub : "Lance le script toutes les heures"
+    - cron: '0 * * * *'
+  workflow_dispatch: # Ceci permet de lancer le bot MANUELLEMENT pour tester
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v3
+
+      - name: Installer Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Installer les outils (requirements)
+        run: pip install -r requirements.txt
+
+      - name: Lancer le Scan
+        env:
+          # On lie vos secrets GitHub aux variables du code
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python sentinelle_alphawatch.py
