@@ -34,31 +34,30 @@ def enregistrer_simulation(crypto, apr, gain_50):
         date_heure = time.strftime('%Y-%m-%d %H:%M:%S')
         writer.writerow([date_heure, crypto, f"{apr:.2f}%", f"{gain_50:.4f} CHF"])
 
-# --- 3. DÉMARRAGE DE LA MACHINE (BOUCLE) ---
-print("🚀 Sentinelle AlphaWatch activée avec Simulation...")
+# --- 3. DÉMARRAGE DE LA MACHINE (VERSION CLOUD) ---
+print(f"🔍 Scan AlphaWatch en cours à {time.strftime('%H:%M:%S')}...")
 
-while True:
-    print(f"🔍 Scan en cours à {time.strftime('%H:%M:%S')}...")
-    
-    for s in symbols:
-        try:
-            funding = exchange.fetch_funding_rate(s)
-            rate = funding['fundingRate']
-            apr_final = rate * 3 * 365 * 3 * 100
+for s in symbols:
+    try:
+        funding = exchange.fetch_funding_rate(s)
+        rate = funding['fundingRate']
+        apr_final = rate * 3 * 365 * 3 * 100
+        
+        # Gain théorique sur 24h
+        gain_24h = (50 * (apr_final/100)) / 365
+        # Gain réel pour l'heure qui vient de s'écouler
+        gain_une_heure = gain_24h / 24 
+        
+        if apr_final >= SEUIL_ALERTE:
+            nom_crypto = s.split('/')[0]
+            msg = f"🔥 ALERTE ! {nom_crypto} | APR: {apr_final:.2f}% | Gain: {gain_24h:.2f} CHF"
             
-            # Gain si on reste 24h sur cette position
-            gain_24h = (50 * (apr_final/100)) / 365
-            # Gain réel pour UNE HEURE (le temps entre deux scans)
-            gain_une_heure = gain_24h / 24 
+            # Envoi et enregistrement
+            envoyer_telegram(msg)
+            enregistrer_simulation(nom_crypto, apr_final, gain_une_heure)
             
-            if apr_final >= SEUIL_ALERTE:
-                nom_crypto = s.split('/')[0]
-                # On enregistre le gain d'UNE HEURE dans le CSV
-                enregistrer_simulation(nom_crypto, apr_final, gain_une_heure)
-                
-        except Exception as e:
-            print(f"⚠️ Erreur sur {s}: {e}")
-            
-    # Le bot attend avant le prochain scan
-    print(f"✅ Scan terminé. Prochain passage dans {INTERVALLE/60:.0f} minutes.")
-    time.sleep(INTERVALLE)
+    except Exception as e:
+        print(f"⚠️ Erreur sur {s}: {e}")
+
+# IMPORTANT : Pas de time.sleep ni de boucle infinie ici !
+print("✅ Scan terminé avec succès. GitHub relancera le bot dans 1 heure.")
